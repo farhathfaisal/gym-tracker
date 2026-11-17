@@ -1,0 +1,144 @@
+import {
+  type Day,
+  type Entry,
+  type Exercise,
+  type Snapshot,
+  sortDays,
+  sortEntries,
+} from "@/lib/domain";
+
+export type Op =
+  | { kind: "create-day"; day: Day }
+  | { kind: "update-day"; id: string; patch: { date?: string; focus?: string | null } }
+  | { kind: "delete-day"; id: string }
+  | { kind: "create-exercise"; exercise: Exercise }
+  | { kind: "create-entry"; entry: Entry }
+  | {
+      kind: "update-entry";
+      id: string;
+      patch: { weight?: number | null; sxr?: string | null; done?: boolean };
+    }
+  | { kind: "delete-entry"; id: string }
+  | { kind: "reorder"; dayId: string; ids: string[] };
+
+function mapDay(days: Day[], id: string, update: (day: Day) => Day): Day[] {
+  return days.map((day) => (day.id === id ? update(day) : day));
+}
+
+export function applyOp(snapshot: Snapshot, op: Op): Snapshot {
+  switch (op.kind) {
+    case "create-exercise":
+      if (snapshot.exercises.some((exercise) => exercise.id === op.exercise.id)) {
+        return snapshot;
+      }
+      return {
+        ...snapshot,
+        exercises: [...snapshot.exercises, op.exercise].sort((a, b) =>
+          a.name.localeCompare(b.name),
+        ),
+      };
+    case "create-day": {
+      const day: Day = {
+        ...op.day,
+        entries: sortEntries(op.day.entries),
+      };
+      const without = snapshot.days.filter((item) => item.id !== day.id);
+      return { ...snapshot, days: sortDays([day, ...without]) };
+    }
+    case "update-day":
+      return {
+        ...snapshot,
+        days: sortDays(
+          mapDay(snapshot.days, op.id, (day) => ({
+            ...day,
+            ...op.patch,
+            updatedAt: new Date().toISOString(),
+          })),
+        ),
+      };
+    case "delete-day":
+      return {
+        ...snapshot,
+        days: snapshot.days.filter((day) => day.id !== op.id),
+      };
+    case "create-entry":
+      return {
+        ...snapshot,
+        days: mapDay(snapshot.days, op.entry.dayId, (day) => ({
+          ...day,
+          entries: sortEntries([
+            ...day.entries.filter((entry) => entry.id !== op.entry.id),
+            op.entry,
+          ]),
+        })),
+      };
+    case "update-entry":
+      return {
+        ...snapshot,
+        days: snapshot.days.map((day) => ({
+          ...day,
+          entries: day.entries.map((entry) =>
+            entry.id === op.id
+              ? { ...entry, ...op.patch, updatedAt: new Date().toISOString() }
+              : entry,
+          ),
+        })),
+      };
+    case "delete-entry":
+      return {
+        ...snapshot,
+        days: snapshot.days.map((day) => ({
+          ...day,
+          entries: day.entries.filter((entry) => entry.id !== op.id),
+        })),
+      };
+    case "reorder":
+      return {
+        ...snapshot,
+        days: mapDay(snapshot.days, op.dayId, (day) => {
+          const byId = new Map(day.entries.map((entry) => [entry.id, entry]));
+          const ordered: Entry[] = [];
+          op.ids.forEach((id, position) => {
+            const entry = byId.get(id);
+            if (entry) ordered.push({ ...entry, position });
+          });
+          for (const entry of day.entries) {
+            if (!op.ids.includes(entry.id)) ordered.push(entry);
+          }
+          return { ...day, entries: sortEntries(ordered) };
+        }),
+      };
+    default:
+      return snapshot;
+  }
+}
+
+export function mergeQueue(queue: Op[], op: Op): Op[] {
+  if (op.kind === "update-entry") {
+    const index = queue.findIndex(
+      (item) => item.kind === "update-entry" && item.id === op.id,
+    );
+    if (index >= 0) {
+      const current = queue[index];
+      if (current.kind !== "update-entry") return [...queue, op];
+      const next = queue.slice();
+      next[index] = {
+        kind: "update-entry",
+        id: op.id,
+        patch: { ...current.patch, ...op.patch },
+      };
+      return next;
+    }
+  }
+  if (op.kind === "reorder") {
+    const index = queue.findIndex(
+      (item) => item.kind === "reorder" && item.dayId === op.dayId,
+    );
+    if (index >= 0) {
+      const next = queue.slice();
+      next[index] = op;
+      return next;
+    }
+  }
+  return [...queue, op];
+}
