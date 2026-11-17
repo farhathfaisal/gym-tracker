@@ -1,53 +1,34 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  useSyncExternalStore,
-  type ReactNode,
-} from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { createContext, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createController, initialGymState, type GymController } from "@/lib/controller";
-import { isOwnerEmail, melbourneToday } from "@/lib/domain";
+import { melbourneToday } from "@/lib/domain";
+import { createHttpRepository } from "@/lib/http-repository";
 import { createMockRepository } from "@/lib/mock-repository";
 import { buildSeed } from "@/lib/mock-seed";
+import { PinScreen } from "@/components/pin-screen";
 import type { GymRepository } from "@/lib/repository";
 import { browserKv } from "@/lib/storage";
-import { createClient } from "@/lib/supabase/client";
-import { isMockMode, supabaseEnv } from "@/lib/supabase/env";
-import { createSupabaseRepository } from "@/lib/supabase/repository";
+import { UNLOCK_COOKIE } from "@/lib/cookies";
 
-type AuthStatus = "unknown" | "in" | "out";
-
-type AuthValue = {
-  status: AuthStatus;
-  configured: boolean;
-  mock: boolean;
-  signOut: () => Promise<void>;
-  markSignedIn: () => void;
-};
-
-const AuthContext = createContext<AuthValue | null>(null);
 const GymContext = createContext<GymController | null>(null);
 
 let mockRepo: GymRepository | null = null;
 
 function repository(): GymRepository {
-  if (isMockMode()) {
+  if (process.env.NEXT_PUBLIC_USE_MOCK === "true") {
     mockRepo ??= createMockRepository(buildSeed(melbourneToday()));
     return mockRepo;
   }
-  return createSupabaseRepository(createClient());
+  return createHttpRepository();
 }
 
-const MOCK_KEY = "gym.mock.session";
+function readUnlocked(): boolean {
+  return document.cookie.split(";").some((part) => part.trim() === `${UNLOCK_COOKIE}=1`);
+}
 
-export function useAuth() {
-  const value = useContext(AuthContext);
-  if (!value) throw new Error("Auth is unavailable");
-  return value;
+function subscribeToNothing(): () => void {
+  return () => undefined;
 }
 
 export function useGym() {
@@ -62,91 +43,29 @@ export function useGym() {
 }
 
 export function Providers({ children }: { children: ReactNode }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const status = useSyncExternalStore(subscribeAuth, getAuthStatus, () => "unknown" as AuthStatus);
-  const mock = isMockMode();
-  const configured = mock || supabaseEnv() != null;
+  const client = useSyncExternalStore(subscribeToNothing, () => true, () => false);
+  const [unlocked, setUnlocked] = useState(false);
+  const signedIn = client && (unlocked || readUnlocked());
 
   useEffect(() => {
-    if (mock) {
-      const signedIn = window.localStorage.getItem(MOCK_KEY) === "1";
-      setAuthStatus(signedIn ? "in" : "out");
-      return;
+    if (process.env.NODE_ENV === "production" && "serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => undefined);
     }
-    let supabase: ReturnType<typeof createClient>;
-    try {
-      supabase = createClient();
-    } catch {
-      setAuthStatus("out");
-      return;
-    }
-    let cancelled = false;
-    supabase.auth.getSession().then(({ data }) => {
-      if (cancelled) return;
-      const email = data.session?.user.email;
-      if (data.session && isOwnerEmail(email)) setAuthStatus("in");
-      else {
-        if (data.session) void supabase.auth.signOut();
-        setAuthStatus("out");
-      }
-    });
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session && isOwnerEmail(session.user.email)) setAuthStatus("in");
-      else if (!session) setAuthStatus("out");
-    });
-    return () => {
-      cancelled = true;
-      data.subscription.unsubscribe();
-    };
-  }, [mock]);
-
-  useEffect(() => {
-    if (status === "out" && pathname !== "/sign-in") router.replace("/sign-in");
-    if (status === "in" && pathname === "/sign-in") router.replace("/");
-  }, [status, pathname, router]);
-
-  useEffect(() => {
-    if (process.env.NODE_ENV !== "production" || !("serviceWorker" in navigator)) return;
-    navigator.serviceWorker.register("/sw.js").catch(() => undefined);
   }, []);
 
-  const auth: AuthValue = {
-    status,
-    configured,
-    mock,
-    markSignedIn() {
-      window.localStorage.setItem(MOCK_KEY, "1");
-      setAuthStatus("in");
-    },
-    async signOut() {
-      if (mock) {
-        window.localStorage.removeItem(MOCK_KEY);
-        setAuthStatus("out");
-        return;
-      }
-      const supabase = createClient();
-      await supabase.auth.signOut();
-      setAuthStatus("out");
-    },
-  };
-
   return (
-    <AuthContext.Provider value={auth}>
-      <div className="app">
-        <div className="frame">
-          {status === "unknown" ? <Splash /> : null}
-          {status === "out" && pathname !== "/sign-in" ? <Splash /> : null}
-          {status === "in" ? <GymShell>{children}</GymShell> : null}
-          {status === "out" && pathname === "/sign-in" ? children : null}
-        </div>
+    <div className="app">
+      <div className="frame">
+        {!client ? <Splash /> : null}
+        {client && signedIn ? <GymShell onLocked={() => setUnlocked(false)}>{children}</GymShell> : null}
+        {client && !signedIn ? <PinScreen onUnlocked={() => setUnlocked(true)} /> : null}
       </div>
-    </AuthContext.Provider>
+    </div>
   );
 }
 
-function GymShell({ children }: { children: ReactNode }) {
-  const mock = isMockMode();
+function GymShell({ children, onLocked }: { children: ReactNode; onLocked: () => void }) {
+  const mock = process.env.NEXT_PUBLIC_USE_MOCK === "true";
   const [controller] = useState(() =>
     createController({
       repo: repository(),
@@ -169,7 +88,20 @@ function GymShell({ children }: { children: ReactNode }) {
     };
   }, [controller]);
 
-  return <GymContext.Provider value={controller}>{children}</GymContext.Provider>;
+  return (
+    <GymContext.Provider value={controller}>
+      <LockWatch onLocked={onLocked} />
+      {children}
+    </GymContext.Provider>
+  );
+}
+
+function LockWatch({ onLocked }: { onLocked: () => void }) {
+  const gym = useGym();
+  useEffect(() => {
+    if (gym.error === "locked") onLocked();
+  }, [gym.error, onLocked]);
+  return null;
 }
 
 function Splash() {
@@ -178,21 +110,4 @@ function Splash() {
       <div className="spinner" />
     </div>
   );
-}
-
-let authStatus: AuthStatus = "unknown";
-const authListeners = new Set<() => void>();
-
-function setAuthStatus(next: AuthStatus) {
-  authStatus = next;
-  for (const listener of authListeners) listener();
-}
-
-function getAuthStatus() {
-  return authStatus;
-}
-
-function subscribeAuth(listener: () => void) {
-  authListeners.add(listener);
-  return () => authListeners.delete(listener);
 }

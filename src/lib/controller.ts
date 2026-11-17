@@ -187,16 +187,19 @@ export function createController(options: ControllerOptions): GymController {
       emit(false);
     } catch (error) {
       const offline = !online() || (error instanceof Error && error.message === "offline");
+      const locked = error instanceof Error && error.message === "locked";
       state = {
         ...state,
         sync: offline ? "offline" : "error",
         pending: queue.length,
         error: offline
           ? null
-          : "Saved on this phone. It will sync when the connection is back.",
+          : locked
+            ? "locked"
+            : "Saved on this phone. It will sync when the connection is back.",
       };
       emit(false);
-      if (!offline) {
+      if (!offline && !locked) {
         attempt += 1;
         const delay = Math.min(30_000, 800 * 2 ** (attempt - 1));
         schedule(delay, () => {
@@ -295,12 +298,15 @@ export function createController(options: ControllerOptions): GymController {
             writeCache();
             emit(false);
           }
-        } catch {
-          if (!stored.snapshot) {
+        } catch (error) {
+          const locked = error instanceof Error && error.message === "locked";
+          if (locked || !stored.snapshot) {
             state = {
               ...state,
-              status: "error",
-              error: "Couldn’t load workouts. Check the connection and try again.",
+              status: stored.snapshot ? "ready" : "error",
+              error: locked
+                ? "locked"
+                : "Couldn’t load workouts. Check the connection and try again.",
             };
             emit(false);
           }

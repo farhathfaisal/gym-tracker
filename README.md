@@ -7,29 +7,40 @@ The app is an installable PWA. Add it to the iPhone Home Screen and it opens ful
 ## Stack
 
 - Next.js (App Router) and TypeScript
-- Supabase Auth (email OTP, magic link as fallback) and Postgres
-- Existing tables: `gym_days`, `gym_entries`, `gym_exercises`
+- A six-digit passcode checked on the server. There is no email code and no Supabase Auth login.
+- Postgres via the Supabase service role, only from server routes. Row Level Security stays on, so the anon key cannot read the gym tables.
 - Framer Motion for sheets, checks, and reordering
 
-Edits apply on screen immediately and are queued in `localStorage`. They retry until Supabase accepts them, including after the gym wifi drops.
+Edits apply on screen immediately and are queued on the phone. They retry until the server accepts them, including after the gym wifi drops. The last loaded workout opens from that cache with no network round trip.
+
+## Passcode
+
+The keypad is shown the first time the Home Screen app is opened. After the right code, a cookie keeps the phone signed in for ten years and is refreshed whenever the app talks to the server. Clearing Safari data is what shows the keypad again.
+
+Set `APP_PIN` yourself in Vercel. It must be exactly six digits. Do not put it in the repo or in chat.
+
+`SESSION_SECRET` signs that cookie. It is a long random string, also server-only.
+
+`SUPABASE_SERVICE_ROLE_KEY` is the secret key from Supabase → Project Settings → API keys. The server uses it for every read and write. It must never be a `NEXT_PUBLIC_` variable.
 
 ## Local development
 
 ```bash
 npm install
 cp .env.example .env.local
+```
+
+Fill in `.env.local` with a six-digit `APP_PIN`, a long `SESSION_SECRET`, and the service role key. Then:
+
+```bash
 npm run dev
 ```
 
-Open http://localhost:3000. The first sign-in emails a 6-digit code to `itsamefarhath@gmail.com`. The UI will not send a code to any other address.
+Open http://localhost:3000 and enter the passcode.
 
-To click through the interface without a code, add this to `.env.local` and restart:
+To click through sample workouts without Supabase, set `GYM_DATA=mock` plus your own `APP_PIN` and `SESSION_SECRET` in `.env.local`.
 
-```bash
-NEXT_PUBLIC_USE_MOCK=true
-```
-
-Any 6-digit code then signs in against sample sessions. Do not set this on Vercel.
+Do not set `GYM_DATA` on Vercel.
 
 ```bash
 npm test
@@ -40,65 +51,34 @@ npm run build
 
 ## Environment variables
 
-| Name | Required | Purpose |
+| Name | Where | Purpose |
 | --- | --- | --- |
-| `NEXT_PUBLIC_SUPABASE_URL` | yes | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | yes | Publishable client key. RLS rejects every other email. |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | no | Alias for the same key, if you prefer that name. |
-| `NEXT_PUBLIC_USE_MOCK` | no | `true` uses sample data and skips email. |
-
-The key in `.env.example` is a public client key. It is safe to ship in the browser. The service role key is not used and must not be added.
-
-These `NEXT_PUBLIC_` values are baked in at build time. If you change them in Vercel, redeploy.
+| `SUPABASE_URL` | Server | Project URL. `NEXT_PUBLIC_SUPABASE_URL` is accepted as a fallback. |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server | Secret key. Bypasses RLS only on the server. |
+| `APP_PIN` | Server | Six-digit passcode. Farhath sets this in Vercel. |
+| `SESSION_SECRET` | Server | HMAC secret for the session cookie. At least 32 characters. |
+| `GYM_DATA` | Server, local only | `mock` uses sample data. |
 
 ## Deploy on Vercel
 
-1. Import this GitHub repository. Framework preset: Next.js. No extra build settings.
-2. Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
-3. Do not set `NEXT_PUBLIC_USE_MOCK`.
-4. Deploy, then copy the production URL (for example `https://gym-tracker.vercel.app`).
+The project is already connected: [gym-tracker](https://vercel.com/farhath-faisals-projects/gym-tracker). Production is https://gym-tracker-gray-three.vercel.app.
 
-## Supabase Auth settings
+In that project’s Settings → Environment Variables, for Production:
 
-In the Supabase dashboard for project `nwjotwbzinmjevxvyzva`:
+1. `APP_PIN` — six digits only you know.
+2. `SUPABASE_SERVICE_ROLE_KEY` — Supabase dashboard → Project Settings → API keys → secret key (`sb_secret_...` or the legacy `service_role` key).
+3. `SESSION_SECRET` — any long random string.
+4. `SUPABASE_URL` — `https://nwjotwbzinmjevxvyzva.supabase.co` if it is not already set.
 
-1. **Authentication → URL configuration**
-   - Site URL: `https://YOUR-VERCEL-DOMAIN`
-   - Redirect URLs:
-     - `https://YOUR-VERCEL-DOMAIN/auth/confirm`
-     - `http://localhost:3000/auth/confirm`
-2. **Authentication → Emails → Magic Link template**
-
-   The template must include `{{ .Token }}` or Supabase sends only a link. Use both the code and a link that does not depend on the browser that requested it:
-
-   ```html
-   <h2>Your Gym code</h2>
-   <p>Enter this code in the Gym app:</p>
-   <p style="font-size:28px; letter-spacing:4px;">{{ .Token }}</p>
-   <p>
-     Or
-     <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email">
-       open this link in Safari
-     </a>.
-   </p>
-   ```
-
-   The Home Screen app cannot receive that link. Type the code into the app. The link is the fallback when you are already in Safari.
-
-3. Email sign-in stays enabled. There is no password.
-4. The first successful code creates the account (none exists yet). After that, you can turn off “Allow new users to sign up” under Authentication → Sign In / Providers → Email. Existing sign-in keeps working.
-5. Sessions last until you sign out. Leave time-boxed sessions and the inactivity timeout unset if you do not want to type a code at the gym.
-
-Row Level Security already allows every operation only when the JWT email is `itsamefarhath@gmail.com`.
+Redeploy after saving them. Do not set `GYM_DATA`.
 
 ## Add to the iPhone Home Screen
 
-1. Open the Vercel URL in Safari (not inside another app).
-2. Tap Share, then **Add to Home Screen**. The name is Gym and the icon is the barbell.
-3. Open Gym from the Home Screen. It runs full screen, under the status bar.
-4. Tap **Send code**, then type the 6 digits from the email into the app.
+1. Open https://gym-tracker-gray-three.vercel.app in Safari.
+2. Tap Share, then **Add to Home Screen**.
+3. Open the Gym icon and enter the passcode once.
 
-After that, the session stays on the phone. Open the app and the log is there, including edits that were still waiting to sync.
+After that, the icon opens straight into the log, including when the gym wifi is down.
 
 ## How a session works
 
@@ -113,4 +93,4 @@ After that, the session stays on the phone. Open the app and the log is there, i
 
 ## Schema
 
-No database changes. The app uses the tables and policies already in place.
+No database changes. Row Level Security stays enabled on `gym_days`, `gym_entries`, and `gym_exercises`.

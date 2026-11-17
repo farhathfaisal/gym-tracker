@@ -1,4 +1,4 @@
-const CACHE = "gym-shell-v1";
+const CACHE = "gym-shell-v2";
 
 self.addEventListener("install", () => {
   self.skipWaiting();
@@ -18,7 +18,7 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
-  if (url.pathname.startsWith("/auth")) return;
+  if (url.pathname.startsWith("/api")) return;
 
   event.respondWith(
     fetch(request)

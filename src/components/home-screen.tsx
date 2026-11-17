@@ -3,27 +3,15 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type UIEvent } from "react";
-import { PersonIcon, RepeatIcon } from "@/components/icons";
-import { Sheet } from "@/components/sheet";
-import { useAuth, useGym } from "@/components/providers";
-import {
-  FOCUSES,
-  formatDay,
-  melbourneToday,
-  OWNER_EMAIL,
-  progressOf,
-  sortDays,
-  todayDay,
-} from "@/lib/domain";
+import { RepeatIcon } from "@/components/icons";
+import { useGym } from "@/components/providers";
+import { FOCUSES, formatDay, melbourneToday, progressOf, sortDays, todayDay } from "@/lib/domain";
 import { haptic } from "@/lib/haptics";
 
 export function HomeScreen() {
   const gym = useGym();
-  const auth = useAuth();
   const router = useRouter();
   const [focus, setFocus] = useState<string>("All");
-  const [accountOpen, setAccountOpen] = useState(false);
-  const [signOutNote, setSignOutNote] = useState<string | null>(null);
   const today = melbourneToday();
   const hero = todayDay(gym.days, today);
   const showHero = Boolean(hero && (focus === "All" || hero.focus === focus));
@@ -45,32 +33,12 @@ export function HomeScreen() {
     router.push(`/day/${day.id}`);
   }
 
-  async function signOut() {
-    if (gym.pending > 0) {
-      await gym.api.flush();
-    }
-    if (gym.api.getState().pending > 0) {
-      setSignOutNote("Still saving on this phone. Try again once you’re online.");
-      return;
-    }
-    gym.api.clearLocal();
-    await auth.signOut();
-    router.replace("/sign-in");
-  }
-
   return (
     <div className="screen">
       <header className="nav">
         <span className="nav-btn" />
         <div className="nav-title">Workouts</div>
-        <button
-          type="button"
-          className="nav-btn"
-          aria-label="Account"
-          onClick={() => setAccountOpen(true)}
-        >
-          <PersonIcon />
-        </button>
+        <span className="nav-btn" />
       </header>
       <div className="scroller" onScroll={onScroll}>
         <h1 className="large-title">Workouts</h1>
@@ -168,16 +136,6 @@ export function HomeScreen() {
           <p className="empty-copy">No sessions for {focus}.</p>
         ) : null}
       </div>
-      <Sheet open={accountOpen} title="Account" onClose={() => setAccountOpen(false)}>
-        <div className="field">
-          <label>Signed in</label>
-          <div>{OWNER_EMAIL}</div>
-        </div>
-        {signOutNote ? <p className="error-text">{signOutNote}</p> : null}
-        <button type="button" className="account danger" onClick={() => void signOut()}>
-          Sign out
-        </button>
-      </Sheet>
     </div>
   );
 }
