@@ -1,4 +1,4 @@
-export const PIN_LENGTH = 6;
+export const PIN_LENGTH = 4;
 
 export function pinConfigured(pin = process.env.APP_PIN): boolean {
   return typeof pin === "string" && new RegExp(`^\\d{${PIN_LENGTH}}$`).test(pin);

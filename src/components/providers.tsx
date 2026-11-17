@@ -9,7 +9,7 @@ import { buildSeed } from "@/lib/mock-seed";
 import { PinScreen } from "@/components/pin-screen";
 import type { GymRepository } from "@/lib/repository";
 import { browserKv } from "@/lib/storage";
-import { UNLOCK_COOKIE } from "@/lib/cookies";
+import { UNLOCK_COOKIE, UNLOCK_STORAGE_KEY } from "@/lib/cookies";
 
 const GymContext = createContext<GymController | null>(null);
 
@@ -24,7 +24,14 @@ function repository(): GymRepository {
 }
 
 function readUnlocked(): boolean {
-  return document.cookie.split(";").some((part) => part.trim() === `${UNLOCK_COOKIE}=1`);
+  const cookie = document.cookie.split(";").some((part) => part.trim() === `${UNLOCK_COOKIE}=1`);
+  let stored = false;
+  try {
+    stored = localStorage.getItem(UNLOCK_STORAGE_KEY) === "1";
+  } catch {
+    stored = false;
+  }
+  return cookie || stored;
 }
 
 function subscribeToNothing(): () => void {

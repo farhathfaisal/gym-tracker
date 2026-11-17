@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { UNLOCK_STORAGE_KEY } from "@/lib/cookies";
 import { haptic } from "@/lib/haptics";
 
-const PIN_LENGTH = 6;
+const PIN_LENGTH = 4;
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"] as const;
 
@@ -24,6 +25,11 @@ export function PinScreen({ onUnlocked }: { onUnlocked: () => void }) {
         body: JSON.stringify({ pin: next }),
       });
       if (response.ok) {
+        try {
+          localStorage.setItem(UNLOCK_STORAGE_KEY, "1");
+        } catch {
+          /* The cookie still keeps the sign-in. */
+        }
         haptic("tick");
         onUnlocked();
         return;

@@ -1,11 +1,16 @@
 import type { Snapshot } from "@/lib/domain";
 import type { Op } from "@/lib/ops";
 import type { GymRepository } from "@/lib/repository";
-import { UNLOCK_COOKIE } from "@/lib/cookies";
+import { UNLOCK_COOKIE, UNLOCK_STORAGE_KEY } from "@/lib/cookies";
 
 function clearUnlockCookie() {
   if (typeof document === "undefined") return;
   document.cookie = `${UNLOCK_COOKIE}=; Max-Age=0; Path=/`;
+  try {
+    localStorage.removeItem(UNLOCK_STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
 }
 
 async function request(path: string, init?: RequestInit): Promise<Response> {

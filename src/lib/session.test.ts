@@ -11,17 +11,17 @@ afterEach(() => {
 });
 
 describe("pin", () => {
-  it("accepts only the configured six digits", () => {
-    process.env.APP_PIN = "135790";
-    expect(pinMatches("135790")).toBe(true);
-    expect(pinMatches("135791")).toBe(false);
-    expect(pinMatches("13579")).toBe(false);
-    expect(pinMatches("1357900")).toBe(false);
+  it("accepts only the configured four digits", () => {
+    process.env.APP_PIN = "1357";
+    expect(pinMatches("1357")).toBe(true);
+    expect(pinMatches("1358")).toBe(false);
+    expect(pinMatches("135")).toBe(false);
+    expect(pinMatches("13570")).toBe(false);
   });
 
   it("rejects every attempt when the pin is not configured", () => {
     delete process.env.APP_PIN;
-    expect(pinMatches("135790")).toBe(false);
+    expect(pinMatches("1357")).toBe(false);
   });
 });
 

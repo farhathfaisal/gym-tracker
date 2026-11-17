@@ -7,7 +7,7 @@ The app is an installable PWA. Add it to the iPhone Home Screen and it opens ful
 ## Stack
 
 - Next.js (App Router) and TypeScript
-- A six-digit passcode checked on the server. There is no email code and no Supabase Auth login.
+- A four-digit passcode checked on the server. There is no email code and no Supabase Auth login.
 - Postgres via the Supabase service role, only from server routes. Row Level Security stays on, so the anon key cannot read the gym tables.
 - Framer Motion for sheets, checks, and reordering
 
@@ -15,9 +15,9 @@ Edits apply on screen immediately and are queued on the phone. They retry until 
 
 ## Passcode
 
-The keypad is shown the first time the Home Screen app is opened. After the right code, a cookie keeps the phone signed in for ten years and is refreshed whenever the app talks to the server. Clearing Safari data is what shows the keypad again.
+The keypad is shown the first time you open the app in the browser or from the Home Screen. After the right code, the browser keeps you signed in for ten years. Each visit renews that. Clearing Safari website data is what shows the keypad again.
 
-Set `APP_PIN` yourself in Vercel. It must be exactly six digits. Do not put it in the repo or in chat.
+Set `APP_PIN` in Vercel. It must be exactly four digits. Do not put it in the repo.
 
 `SESSION_SECRET` signs that cookie. It is a long random string, also server-only.
 
@@ -30,7 +30,7 @@ npm install
 cp .env.example .env.local
 ```
 
-Fill in `.env.local` with a six-digit `APP_PIN`, a long `SESSION_SECRET`, and the service role key. Then:
+Fill in `.env.local` with a four-digit `APP_PIN`, a long `SESSION_SECRET`, and the service role key. Then:
 
 ```bash
 npm run dev
@@ -65,7 +65,7 @@ The project is already connected: [gym-tracker](https://vercel.com/farhath-faisa
 
 In that project’s Settings → Environment Variables, for Production:
 
-1. `APP_PIN` — six digits only you know.
+1. `APP_PIN` — four digits.
 2. `SUPABASE_SERVICE_ROLE_KEY` — Supabase dashboard → Project Settings → API keys → secret key (`sb_secret_...` or the legacy `service_role` key).
 3. `SESSION_SECRET` — any long random string.
 4. `SUPABASE_URL` — `https://nwjotwbzinmjevxvyzva.supabase.co` if it is not already set.
