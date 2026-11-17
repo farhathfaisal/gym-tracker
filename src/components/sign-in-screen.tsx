@@ -42,7 +42,13 @@ export function SignInScreen() {
         },
       });
       if (sendError) {
-        setError(sendError.message);
+        const rateLimited = /rate limit/i.test(sendError.message);
+        setError(
+          rateLimited
+            ? "No more emails can be sent for about an hour. If you already have a code, enter it below."
+            : sendError.message,
+        );
+        if (rateLimited) setStage("code");
         return;
       }
       setStage("code");
