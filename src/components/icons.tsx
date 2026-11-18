@@ -97,6 +97,20 @@ export function GripIcon() {
   );
 }
 
+export function PlusIcon({ size = 28 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M12 5v14M5 12h14"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 export function CheckMark() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">

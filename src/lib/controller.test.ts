@@ -178,6 +178,16 @@ describe("controller", () => {
     expect(repo.peek().exercises.some((exercise) => exercise.name === "Face Pull")).toBe(true);
   });
 
+  it("starts an empty workout for a chosen day", async () => {
+    const { controller, repo, today } = harness();
+    await controller.load();
+    const day = controller.createDay(today, "Chest");
+    expect(day?.focus).toBe("Chest");
+    expect(day?.entries).toEqual([]);
+    await controller.settled();
+    expect(repo.peek().days.some((item) => item.id === day?.id && item.focus === "Chest")).toBe(true);
+  });
+
   it("renames an exercise on every workout and saves a note", async () => {
     const { controller, repo } = harness();
     await controller.load();

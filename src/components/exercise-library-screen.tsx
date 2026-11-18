@@ -2,13 +2,13 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ChevronLeft } from "@/components/icons";
+import { ChevronLeft, PlusIcon } from "@/components/icons";
 import { Sheet } from "@/components/sheet";
 import { useGym } from "@/components/providers";
 import { FOCUSES, type Exercise } from "@/lib/domain";
 import { haptic } from "@/lib/haptics";
 
-export function ExerciseLibraryScreen() {
+export function ExerciseLibraryScreen({ embedded = false }: { embedded?: boolean }) {
   const gym = useGym();
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -44,14 +44,18 @@ export function ExerciseLibraryScreen() {
   return (
     <div className="screen">
       <header className="nav">
-        <button type="button" className="nav-btn" onClick={() => router.push("/")}>
-          <ChevronLeft />
-          <strong>Workouts</strong>
-        </button>
+        {embedded ? (
+          <span className="nav-btn" />
+        ) : (
+          <button type="button" className="nav-btn" onClick={() => router.push("/")}>
+            <ChevronLeft />
+            <strong>Workouts</strong>
+          </button>
+        )}
         <div className="nav-title">Exercises</div>
         <span className="nav-btn" />
       </header>
-      <div className="scroller with-bar">
+      <div className="scroller with-fab">
         <h1 className="large-title">Exercises</h1>
         <p className="progress-line">Names and muscle groups used across your workouts.</p>
         <div className="picker-tools library-tools">
@@ -99,11 +103,14 @@ export function ExerciseLibraryScreen() {
         ))}
         {matches.length === 0 ? <p className="empty-copy">No exercises in this group.</p> : null}
       </div>
-      <div className="bottom-bar">
-        <button type="button" className="add-btn" onClick={() => setCreating(true)}>
-          New exercise
-        </button>
-      </div>
+      <button
+        type="button"
+        className="fab"
+        aria-label="New exercise"
+        onClick={() => setCreating(true)}
+      >
+        <PlusIcon />
+      </button>
       <Sheet open={editing != null} title={editing?.name ?? "Exercise"} onClose={() => setEditingId(null)}>
         {editing ? (
           <ExerciseDetails

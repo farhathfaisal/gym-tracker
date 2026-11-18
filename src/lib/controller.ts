@@ -45,6 +45,7 @@ export type GymController = {
   refreshConnectivity: () => void;
   clearLocal: () => void;
   repeatDay: (sourceId: string) => Day | null;
+  createDay: (date: string, focus: string | null) => Day | null;
   setDone: (entryId: string, done: boolean) => void;
   setWeight: (entryId: string, weight: number | null) => void;
   setSxr: (entryId: string, sxr: string | null) => void;
@@ -339,6 +340,21 @@ export function createController(options: ControllerOptions): GymController {
       options.storage.removeItem(queueKey);
       state = { ...initialGymState, status: "loading" };
       for (const listener of listeners) listener();
+    },
+    createDay(date, focus) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+      const createdAt = now().toISOString();
+      const day: Day = {
+        id: crypto.randomUUID(),
+        date,
+        focus,
+        notes: null,
+        createdAt,
+        updatedAt: createdAt,
+        entries: [],
+      };
+      commit({ kind: "create-day", day }, "now");
+      return day;
     },
     repeatDay(sourceId) {
       const found = state.days.find((day) => day.id === sourceId);

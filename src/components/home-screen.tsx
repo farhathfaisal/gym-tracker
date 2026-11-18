@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type UIEvent } from "react";
-import { RepeatIcon } from "@/components/icons";
+import { PlusIcon, RepeatIcon } from "@/components/icons";
+import { Sheet } from "@/components/sheet";
 import { useGym } from "@/components/providers";
 import { FOCUSES, formatDay, melbourneToday, progressOf, sortDays, todayDay } from "@/lib/domain";
 import { haptic } from "@/lib/haptics";
@@ -11,8 +12,11 @@ import { haptic } from "@/lib/haptics";
 export function HomeScreen() {
   const gym = useGym();
   const router = useRouter();
-  const [focus, setFocus] = useState<string>("All");
   const today = melbourneToday();
+  const [focus, setFocus] = useState<string>("All");
+  const [creating, setCreating] = useState(false);
+  const [newDate, setNewDate] = useState(today);
+  const [newFocus, setNewFocus] = useState<string | null>(null);
   const hero = todayDay(gym.days, today);
   const showHero = Boolean(hero && (focus === "All" || hero.focus === focus));
   const rows = sortDays(gym.days).filter((day) => {
@@ -38,11 +42,9 @@ export function HomeScreen() {
       <header className="nav">
         <span className="nav-btn" />
         <div className="nav-title">Workouts</div>
-        <Link href="/exercises" className="nav-btn">
-          Exercises
-        </Link>
+        <span className="nav-btn" />
       </header>
-      <div className="scroller" onScroll={onScroll}>
+      <div className="scroller with-fab" onScroll={onScroll}>
         <h1 className="large-title">Workouts</h1>
         <div className="chips" role="tablist" aria-label="Focus">
           {["All", ...FOCUSES].map((name) => (
@@ -129,6 +131,59 @@ export function HomeScreen() {
           <p className="empty-copy">No sessions for {focus}.</p>
         ) : null}
       </div>
+      <button
+        type="button"
+        className="fab"
+        aria-label="New workout"
+        onClick={() => {
+          setNewDate(melbourneToday());
+          setNewFocus(null);
+          setCreating(true);
+        }}
+      >
+        <PlusIcon />
+      </button>
+      <Sheet open={creating} title="New workout" onClose={() => setCreating(false)}>
+        <div className="field">
+          <label htmlFor="new-workout-date">Date</label>
+          <input
+            id="new-workout-date"
+            type="date"
+            value={newDate}
+            onChange={(event) => setNewDate(event.target.value)}
+          />
+        </div>
+        <p className="inset-label">Focus</p>
+        <div className="focus-grid">
+          {FOCUSES.map((name) => (
+            <button
+              key={name}
+              type="button"
+              className="chip"
+              aria-pressed={newFocus === name}
+              onClick={() => setNewFocus(name)}
+            >
+              <span className="dot" data-focus={name} />
+              {name}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          className="account"
+          disabled={!newFocus || !/^\d{4}-\d{2}-\d{2}$/.test(newDate)}
+          onClick={() => {
+            if (!newFocus) return;
+            const day = gym.api.createDay(newDate, newFocus);
+            if (!day) return;
+            haptic("select");
+            setCreating(false);
+            router.push(`/day/${day.id}/edit`);
+          }}
+        >
+          Start workout
+        </button>
+      </Sheet>
     </div>
   );
 }
