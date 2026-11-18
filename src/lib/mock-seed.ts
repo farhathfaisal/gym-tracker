@@ -109,8 +109,8 @@ export function buildSeed(today: string, now = Date.now()): Snapshot {
       ["Calf Raise", 40, "3 x 12-14", true],
     ]),
     buildDay("day-chest", addDays(today, -6), "Chest", stamp(6), [
-      ["Machine Chest Press", 70, "3 x 6-8", true],
       ["DB Incline Chest Press", 32.5, "3 x 8-10", true],
+      ["Machine Chest Press", 70, "3 x 6-8", true],
       ["Pec Fly", 50, "3 x 10-12", false],
       ["Tricep Extension", 27.5, "3 x 10-12", false],
       ["DB Curl", 14, "3 x 8-10", false],
@@ -155,8 +155,8 @@ export function buildSeed(today: string, now = Date.now()): Snapshot {
       ["DB Side Lateral Raise", 7.5, "3 x 12-14", true],
     ]),
     buildDay("day-chest-old", addDays(today, -120), "Chest", stamp(120), [
-      ["Machine Chest Press", 60, "3 x 8-10", true],
       ["DB Incline Chest Press", 27.5, "3 x 8-10", true],
+      ["Machine Chest Press", 60, "3 x 8-10", true],
       ["Pec Fly", 45, "3 x 10-12", true],
     ]),
   ];

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   addDays,
+  arrangeWorkout,
   chartGeometry,
   formatDay,
   melbourneToday,
@@ -8,6 +9,7 @@ import {
   previousWeight,
   stepWeight,
   weightSeries,
+  type Day,
 } from "@/lib/domain";
 import { buildSeed } from "@/lib/mock-seed";
 
@@ -47,6 +49,81 @@ describe("weights", () => {
     expect(stepWeight(32.5, 2.5)).toBe(35);
     expect(stepWeight(13.6, 2.5)).toBe(16.1);
     expect(stepWeight(2.5, -2.5)).toBeNull();
+  });
+});
+
+function entry(name: string, position: number): Day["entries"][number] {
+  return {
+    id: `e-${position}`,
+    dayId: "day",
+    exerciseId: null,
+    name,
+    weight: 20,
+    sxr: "3 x 8-10",
+    done: false,
+    position,
+    notes: null,
+    createdAt: "2026-10-13T00:00:00.000Z",
+    updatedAt: "2026-10-13T00:00:00.000Z",
+  };
+}
+
+function day(focus: string, names: string[]): Day {
+  return {
+    id: "day",
+    date: "2026-10-13",
+    focus,
+    notes: null,
+    createdAt: "2026-10-13T00:00:00.000Z",
+    updatedAt: "2026-10-13T00:00:00.000Z",
+    entries: names.map(entry),
+  };
+}
+
+describe("workout titles", () => {
+  it("names a scrambled day after the main lift and puts that lift first", () => {
+    const arranged = arrangeWorkout(
+      day("Legs", [
+        "Leg Curl",
+        "Seated Row",
+        "Machine Bicep Curl",
+        "Pec fly",
+        "Machine Shoulder Press",
+        "DB Incline Chest Press",
+      ]),
+    );
+    expect(arranged.focus).toBe("Chest");
+    expect(arranged.entries.map((item) => item.name)).toEqual([
+      "DB Incline Chest Press",
+      "Leg Curl",
+      "Seated Row",
+      "Machine Bicep Curl",
+      "Pec fly",
+      "Machine Shoulder Press",
+    ]);
+    expect(arranged.entries.map((item) => item.position)).toEqual([0, 1, 2, 3, 4, 5]);
+  });
+
+  it("keeps a shoulder day when the press is already first", () => {
+    const original = day("Shoulder", [
+      "DB Shoulder Press",
+      "DB Incline Chest Press",
+      "Seated Row",
+    ]);
+    expect(arrangeWorkout(original)).toBe(original);
+  });
+
+  it("titles a bent-over row day as back", () => {
+    const arranged = arrangeWorkout(
+      day("Legs", ["Leg Curl", "Lat Pulldown", "Bent-Over Row"]),
+    );
+    expect(arranged.focus).toBe("Back");
+    expect(arranged.entries[0].name).toBe("Bent-Over Row");
+  });
+
+  it("leaves a day with no main lift unchanged", () => {
+    const original = day("Arms", ["DB Curl", "DB Hammer Curl"]);
+    expect(arrangeWorkout(original)).toBe(original);
   });
 });
 

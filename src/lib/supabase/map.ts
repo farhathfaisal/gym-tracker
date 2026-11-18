@@ -1,4 +1,5 @@
 import {
+  arrangeWorkout,
   roundWeight,
   sortDays,
   sortEntries,
@@ -94,7 +95,7 @@ export function mapSnapshot(days: DayRow[], exercises: ExerciseRow[]): Snapshot 
     days: sortDays(
       days.map((day) => {
         const mapped = mapDay(day);
-        return {
+        return arrangeWorkout({
           ...mapped,
           entries: mapped.entries.map((entry) => ({
             ...entry,
@@ -103,7 +104,7 @@ export function mapSnapshot(days: DayRow[], exercises: ExerciseRow[]): Snapshot 
                 ? names.get(entry.exerciseId)!
                 : entry.name,
           })),
-        };
+        });
       }),
     ),
   };

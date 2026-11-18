@@ -132,6 +132,74 @@ export function sortEntries(entries: Entry[]): Entry[] {
   );
 }
 
+const PRIMARY_LIFTS: Record<string, FocusName> = {
+  "db incline chest press": "Chest",
+  "db shoulder press": "Shoulder",
+  "bent-over row": "Back",
+  "barbell deep squat": "Legs",
+};
+
+function liftKey(name: string): string {
+  return name.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function primaryFocus(name: string): FocusName | null {
+  return PRIMARY_LIFTS[liftKey(name)] ?? null;
+}
+
+export function arrangeWorkout(day: Day): Day {
+  const ordered = sortEntries(day.entries);
+  const firstIndex = new Map<FocusName, number>();
+  ordered.forEach((entry, index) => {
+    const focus = primaryFocus(entry.name);
+    if (focus && !firstIndex.has(focus)) firstIndex.set(focus, index);
+  });
+  if (firstIndex.size === 0) return day;
+
+  let focus: FocusName;
+  if (firstIndex.size === 1) {
+    focus = [...firstIndex.keys()][0];
+  } else if (day.focus && firstIndex.has(day.focus as FocusName)) {
+    focus = day.focus as FocusName;
+  } else {
+    focus = [...firstIndex.keys()][0];
+    ordered.forEach((entry) => {
+      const item = primaryFocus(entry.name);
+      if (item) focus = item;
+    });
+  }
+
+  const primaryIndex = firstIndex.get(focus) ?? 0;
+  const next =
+    primaryIndex === 0
+      ? ordered
+      : [
+          ordered[primaryIndex],
+          ...ordered.slice(0, primaryIndex),
+          ...ordered.slice(primaryIndex + 1),
+        ];
+  const entries = next.map((entry, position) =>
+    entry.position === position ? entry : { ...entry, position },
+  );
+  const sameOrder = entries.every((entry, index) => entry.id === ordered[index]?.id);
+  if (sameOrder && day.focus === focus) return day;
+  return {
+    ...day,
+    focus,
+    entries: sameOrder ? day.entries : entries,
+  };
+}
+
+export function arrangeSnapshot(snapshot: Snapshot): Snapshot {
+  let changed = false;
+  const days = snapshot.days.map((day) => {
+    const next = arrangeWorkout(day);
+    if (next !== day) changed = true;
+    return next;
+  });
+  return changed ? { ...snapshot, days } : snapshot;
+}
+
 export function progressOf(day: Day): { done: number; total: number } {
   return {
     done: day.entries.filter((entry) => entry.done).length,

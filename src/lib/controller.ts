@@ -1,4 +1,6 @@
 import {
+  arrangeSnapshot,
+  arrangeWorkout,
   defaultSxr,
   findEntry,
   melbourneToday,
@@ -164,7 +166,7 @@ export function createController(options: ControllerOptions): GymController {
         writeQueue();
       }
       try {
-        const fresh = await options.repo.load();
+        const fresh = arrangeSnapshot(await options.repo.load());
         if (queue.length === 0) {
           state = {
             ...state,
@@ -269,14 +271,16 @@ export function createController(options: ControllerOptions): GymController {
       const stored = readStored();
       queue = stored.queue;
       if (stored.snapshot) {
+        const arranged = arrangeSnapshot(stored.snapshot);
         state = {
           ...state,
-          days: stored.snapshot.days,
-          exercises: stored.snapshot.exercises,
+          days: arranged.days,
+          exercises: arranged.exercises,
           status: "ready",
           pending: queue.length,
           sync: queue.length > 0 ? "saving" : "idle",
         };
+        if (arranged !== stored.snapshot) writeCache();
         emit(false);
       }
       if (queue.length > 0) {
@@ -284,7 +288,7 @@ export function createController(options: ControllerOptions): GymController {
       }
       if (queue.length === 0) {
         try {
-          const fresh = await options.repo.load();
+          const fresh = arrangeSnapshot(await options.repo.load());
           if (queue.length === 0) {
             state = {
               ...state,
@@ -331,8 +335,9 @@ export function createController(options: ControllerOptions): GymController {
       for (const listener of listeners) listener();
     },
     repeatDay(sourceId) {
-      const source = state.days.find((day) => day.id === sourceId);
-      if (!source) return null;
+      const found = state.days.find((day) => day.id === sourceId);
+      if (!found) return null;
+      const source = arrangeWorkout(found);
       const createdAt = now().toISOString();
       const id = crypto.randomUUID();
       const day: Day = {
