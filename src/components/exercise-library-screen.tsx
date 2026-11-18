@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, type UIEvent } from "react";
 import { ChevronLeft, PlusIcon } from "@/components/icons";
 import { Sheet } from "@/components/sheet";
 import { useGym } from "@/components/providers";
@@ -41,6 +41,11 @@ export function ExerciseLibraryScreen({ embedded = false }: { embedded?: boolean
       : [{ name: muscle, exercises: matches }];
   const editing = gym.exercises.find((exercise) => exercise.id === editingId) ?? null;
 
+  function onScroll(event: UIEvent<HTMLElement>) {
+    const amount = Math.max(0, Math.min(1, event.currentTarget.scrollTop / 36));
+    event.currentTarget.parentElement?.style.setProperty("--collapse", String(amount));
+  }
+
   return (
     <div className="screen">
       <header className="nav">
@@ -55,7 +60,7 @@ export function ExerciseLibraryScreen({ embedded = false }: { embedded?: boolean
         <div className="nav-title">Exercises</div>
         <span className="nav-btn" />
       </header>
-      <div className="scroller with-fab">
+      <div className="scroller with-fab" onScroll={onScroll}>
         <h1 className="large-title">Exercises</h1>
         <p className="progress-line">Names and muscle groups used across your workouts.</p>
         <div className="picker-tools library-tools">
