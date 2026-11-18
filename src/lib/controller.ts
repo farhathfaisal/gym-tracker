@@ -53,6 +53,7 @@ export type GymController = {
   reorder: (dayId: string, ids: string[]) => void;
   deleteEntry: (entryId: string) => void;
   addEntry: (dayId: string, exercise: Exercise) => Entry | null;
+  createExercise: (name: string, focus: string | null) => Exercise | null;
   createExerciseAndAdd: (dayId: string, name: string, focus: string | null) => Entry | null;
   updateDay: (dayId: string, patch: { date?: string; focus?: string | null }) => void;
   deleteDay: (dayId: string) => void;
@@ -430,6 +431,23 @@ export function createController(options: ControllerOptions): GymController {
       };
       commit({ kind: "create-entry", entry }, "now");
       return entry;
+    },
+    createExercise(name, focus) {
+      const trimmed = name.trim();
+      if (!trimmed) return null;
+      const existing = state.exercises.find(
+        (exercise) => exercise.name.toLowerCase() === trimmed.toLowerCase(),
+      );
+      if (existing) return existing;
+      const exercise: Exercise = {
+        id: crypto.randomUUID(),
+        name: trimmed,
+        focus,
+        targets: focus ? [focus] : [],
+        createdAt: now().toISOString(),
+      };
+      commit({ kind: "create-exercise", exercise }, "now");
+      return exercise;
     },
     createExerciseAndAdd(dayId, name, focus) {
       const trimmed = name.trim();

@@ -38,7 +38,9 @@ export function HomeScreen() {
       <header className="nav">
         <span className="nav-btn" />
         <div className="nav-title">Workouts</div>
-        <span className="nav-btn" />
+        <Link href="/exercises" className="nav-btn">
+          Exercises
+        </Link>
       </header>
       <div className="scroller" onScroll={onScroll}>
         <h1 className="large-title">Workouts</h1>

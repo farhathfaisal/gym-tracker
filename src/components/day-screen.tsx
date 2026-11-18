@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, type UIEvent } from "react";
 import { WeightChart } from "@/components/chart";
 import { ExercisePicker } from "@/components/exercise-picker";
 import { ExerciseRow } from "@/components/exercise-row";
-import { ChevronDown, ChevronLeft } from "@/components/icons";
+import { ChevronDown, ChevronLeft, ChevronRight } from "@/components/icons";
 import { Sheet } from "@/components/sheet";
 import { useGym } from "@/components/providers";
 import {
@@ -113,6 +113,14 @@ export function DayScreen({ id }: { id: string }) {
               ? "All done"
               : `${progress.done} of ${progress.total}`}
         </p>
+        <button
+          type="button"
+          className="edit-exercises"
+          onClick={() => router.push(`/day/${day.id}/edit`)}
+        >
+          <span>Edit exercises</span>
+          <ChevronRight />
+        </button>
         <Reorder.Group
           as="div"
           axis="y"

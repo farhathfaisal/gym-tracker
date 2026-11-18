@@ -729,6 +729,48 @@ button {
   font-variant-numeric: tabular-nums;
 }
 
+.edit-exercises {
+  margin: 0 16px 14px;
+  min-height: 50px;
+  width: calc(100% - 32px);
+  border-radius: 14px;
+  background: var(--elevated);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px 0 16px;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.library-tools {
+  background: var(--bg);
+}
+
+.library-group {
+  margin-top: 0;
+}
+
+.library-row {
+  width: 100%;
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  padding: 8px 16px;
+  background: var(--elevated);
+}
+
+.library-row + .library-row {
+  box-shadow: inset 0 0.5px 0 var(--separator);
+}
+
+.account:disabled {
+  opacity: 0.4;
+}
+
 .bottom-bar {
   position: absolute;
   left: 0;
