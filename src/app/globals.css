@@ -236,17 +236,6 @@ button {
   font-variant-numeric: tabular-nums;
 }
 
-.sync {
-  margin: 8px 20px 0;
-  color: var(--secondary);
-  font-size: 13px;
-}
-
-.sync.warn {
-  color: var(--orange);
-  text-align: left;
-}
-
 .chips {
   display: flex;
   gap: 8px;

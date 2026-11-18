@@ -42,15 +42,6 @@ export function HomeScreen() {
       </header>
       <div className="scroller" onScroll={onScroll}>
         <h1 className="large-title">Workouts</h1>
-        {gym.sync === "saving" ? <p className="sync">Saving…</p> : null}
-        {gym.sync === "offline" && gym.pending > 0 ? (
-          <p className="sync">On this phone · will sync</p>
-        ) : null}
-        {gym.sync === "error" ? (
-          <button type="button" className="sync warn" onClick={() => void gym.api.flush()}>
-            Saved on this phone · Retry
-          </button>
-        ) : null}
         <div className="chips" role="tablist" aria-label="Focus">
           {["All", ...FOCUSES].map((name) => (
             <button

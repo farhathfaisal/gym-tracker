@@ -125,13 +125,6 @@ export function DayScreen({ id }: { id: string }) {
               ? "All done"
               : `${progress.done} of ${progress.total}`}
         </p>
-        {gym.sync === "saving" ? <p className="sync">Saving…</p> : null}
-        {gym.sync === "offline" && gym.pending > 0 ? <p className="sync">On this phone · will sync</p> : null}
-        {gym.sync === "error" ? (
-          <button type="button" className="sync warn" onClick={() => void gym.api.flush()}>
-            Saved on this phone · Retry
-          </button>
-        ) : null}
         <Reorder.Group
           as="div"
           axis="y"
