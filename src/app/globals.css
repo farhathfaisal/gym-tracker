@@ -250,6 +250,9 @@ button {
 
 .chip {
   flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   height: 34px;
   padding: 0 14px;
   border-radius: 999px;
@@ -747,6 +750,19 @@ button {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   padding-bottom: 12px;
+}
+
+.picker-tools {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--sheet);
+  padding-bottom: 4px;
+}
+
+.muscle-chips {
+  padding-top: 2px;
+  padding-bottom: 8px;
 }
 
 .search {

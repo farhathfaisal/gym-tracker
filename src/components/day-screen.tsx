@@ -31,6 +31,7 @@ export function DayScreen({ id }: { id: string }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [adding, setAdding] = useState(false);
   const [query, setQuery] = useState("");
+  const [muscle, setMuscle] = useState<string>("All");
   const [sxrEntry, setSxrEntry] = useState<string | null>(null);
   const [customSxr, setCustomSxr] = useState("");
   const [historyId, setHistoryId] = useState<string | null>(null);
@@ -85,19 +86,51 @@ export function DayScreen({ id }: { id: string }) {
     setOverride(null);
   }
 
-  function chooseExercise(exercise: Exercise) {
-    gym.api.addEntry(day!.id, exercise);
-    haptic("select");
+  function openAdd() {
+    const focus = day?.focus;
+    setMuscle(focus && (FOCUSES as readonly string[]).includes(focus) ? focus : "All");
+    setQuery("");
+    setAdding(true);
+  }
+
+  function closeAdd() {
     setAdding(false);
     setQuery("");
   }
 
+  function chooseExercise(exercise: Exercise) {
+    gym.api.addEntry(day!.id, exercise);
+    haptic("select");
+    closeAdd();
+  }
+
   const needle = query.trim().toLowerCase();
-  const matches = gym.exercises.filter((exercise) =>
-    exercise.name.toLowerCase().includes(needle),
-  );
-  const preferred = matches.filter((exercise) => exercise.focus === day.focus);
-  const rest = matches.filter((exercise) => exercise.focus !== day.focus);
+  const muscleOrder = [
+    ...(day.focus && (FOCUSES as readonly string[]).includes(day.focus) ? [day.focus] : []),
+    ...FOCUSES.filter((name) => name !== day.focus),
+  ];
+  const matches = [...gym.exercises]
+    .filter((exercise) => {
+      if (needle && !exercise.name.toLowerCase().includes(needle)) return false;
+      if (muscle !== "All" && exercise.focus !== muscle) return false;
+      return true;
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const sections =
+    muscle === "All"
+      ? [
+          ...muscleOrder.map((name) => ({
+            name,
+            exercises: matches.filter((exercise) => exercise.focus === name),
+          })),
+          {
+            name: "Other",
+            exercises: matches.filter(
+              (exercise) => !exercise.focus || !(FOCUSES as readonly string[]).includes(exercise.focus),
+            ),
+          },
+        ].filter((section) => section.exercises.length > 0)
+      : [{ name: muscle, exercises: matches }];
   const exact = gym.exercises.some((exercise) => exercise.name.toLowerCase() === needle);
 
   return (
@@ -165,7 +198,7 @@ export function DayScreen({ id }: { id: string }) {
           type="button"
           className="add-btn"
           data-testid="add-exercise"
-          onClick={() => setAdding(true)}
+          onClick={openAdd}
         >
           Add exercise
         </button>
@@ -226,36 +259,59 @@ export function DayScreen({ id }: { id: string }) {
         )}
       </Sheet>
 
-      <Sheet open={adding} title="Add exercise" onClose={() => setAdding(false)}>
-        <input
-          className="search"
-          placeholder="Search or create"
-          value={query}
-          autoFocus
-          data-testid="exercise-search"
-          onChange={(event) => setQuery(event.target.value)}
-        />
-        {preferred.length > 0 ? <p className="inset-label">{day.focus}</p> : null}
-        <div>
-          {preferred.map((exercise) => (
-            <ExerciseChoice key={exercise.id} exercise={exercise} onChoose={chooseExercise} />
-          ))}
+      <Sheet open={adding} title="Add exercise" onClose={closeAdd}>
+        <div className="picker-tools">
+          <input
+            className="search"
+            placeholder="Search or create"
+            value={query}
+            autoFocus
+            data-testid="exercise-search"
+            onChange={(event) => setQuery(event.target.value)}
+          />
+          <div className="chips muscle-chips" role="tablist" aria-label="Muscle group">
+            {["All", ...muscleOrder].map((name) => (
+              <button
+                key={name}
+                type="button"
+                className="chip"
+                aria-pressed={muscle === name}
+                onClick={() => setMuscle(name)}
+              >
+                {name === "All" ? null : <span className="dot" data-focus={name} />}
+                {name}
+              </button>
+            ))}
+          </div>
         </div>
-        {rest.length > 0 ? <p className="inset-label">All exercises</p> : null}
-        <div>
-          {rest.map((exercise) => (
-            <ExerciseChoice key={exercise.id} exercise={exercise} onChoose={chooseExercise} />
-          ))}
-        </div>
+        {sections.map((section) => (
+          <div key={section.name}>
+            {muscle === "All" ? <p className="inset-label">{section.name}</p> : null}
+            <div>
+              {section.exercises.map((exercise) => (
+                <ExerciseChoice
+                  key={exercise.id}
+                  exercise={exercise}
+                  showFocus={muscle === "All"}
+                  onChoose={chooseExercise}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+        {matches.length === 0 && !needle ? (
+          <p className="empty-copy">
+            {muscle === "All" ? "No exercises yet." : `No ${muscle.toLowerCase()} exercises yet.`}
+          </p>
+        ) : null}
         {needle && !exact ? (
           <button
             type="button"
             className="option create"
             onClick={() => {
-              gym.api.createExerciseAndAdd(day.id, query, day.focus);
+              gym.api.createExerciseAndAdd(day.id, query, muscle === "All" ? day.focus : muscle);
               haptic("select");
-              setAdding(false);
-              setQuery("");
+              closeAdd();
             }}
           >
             Create “{query.trim()}”
@@ -339,15 +395,17 @@ export function DayScreen({ id }: { id: string }) {
 
 function ExerciseChoice({
   exercise,
+  showFocus,
   onChoose,
 }: {
   exercise: Exercise;
+  showFocus: boolean;
   onChoose: (exercise: Exercise) => void;
 }) {
   return (
     <button type="button" className="option" onClick={() => onChoose(exercise)}>
       <span>{exercise.name}</span>
-      <span className="meta">{exercise.focus}</span>
+      {showFocus && exercise.focus ? <span className="meta">{exercise.focus}</span> : null}
     </button>
   );
 }
