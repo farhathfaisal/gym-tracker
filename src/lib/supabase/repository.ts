@@ -94,6 +94,22 @@ export function createSupabaseRepository(client: SupabaseClient): GymRepository 
           if (result.error) throw new Error(result.error.message);
           return;
         }
+        case "update-exercise": {
+          const patch: { name?: string; focus?: string | null; targets?: string[] } = {};
+          const name = op.patch.name?.trim();
+          if (name) patch.name = name;
+          if (op.patch.focus !== undefined) {
+            patch.focus = op.patch.focus;
+            patch.targets = op.patch.focus ? [op.patch.focus] : [];
+          }
+          const result = await client
+            .from("gym_exercises")
+            .update(patch)
+            .eq("id", op.id)
+            .select("id");
+          assertOk(result.error, result.data as { id: string }[] | null);
+          return;
+        }
         case "create-entry": {
           const result = await client.from("gym_entries").upsert(entryToRow(op.entry));
           if (result.error) throw new Error(result.error.message);

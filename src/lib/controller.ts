@@ -48,6 +48,8 @@ export type GymController = {
   setDone: (entryId: string, done: boolean) => void;
   setWeight: (entryId: string, weight: number | null) => void;
   setSxr: (entryId: string, sxr: string | null) => void;
+  setNote: (entryId: string, notes: string | null) => void;
+  updateExercise: (exerciseId: string, patch: { name?: string; focus?: string | null }) => void;
   reorder: (dayId: string, ids: string[]) => void;
   deleteEntry: (entryId: string) => void;
   addEntry: (dayId: string, exercise: Exercise) => Entry | null;
@@ -240,7 +242,7 @@ export function createController(options: ControllerOptions): GymController {
 
   function patchEntry(
     entryId: string,
-    patch: { weight?: number | null; sxr?: string | null; done?: boolean },
+    patch: { weight?: number | null; sxr?: string | null; done?: boolean; notes?: string | null },
     when: "now" | "soon",
   ) {
     const found = findEntry(state.days, entryId);
@@ -256,6 +258,9 @@ export function createController(options: ControllerOptions): GymController {
       return;
     }
     if (patch.sxr !== undefined && patch.sxr === found.entry.sxr && Object.keys(patch).length === 1) {
+      return;
+    }
+    if (patch.notes !== undefined && patch.notes === found.entry.notes && Object.keys(patch).length === 1) {
       return;
     }
     commit({ kind: "update-entry", id: entryId, patch }, when);
@@ -371,6 +376,25 @@ export function createController(options: ControllerOptions): GymController {
     },
     setSxr(entryId, sxr) {
       patchEntry(entryId, { sxr }, "soon");
+    },
+    setNote(entryId, notes) {
+      patchEntry(entryId, { notes: notes?.trim() ? notes.trim() : null }, "soon");
+    },
+    updateExercise(exerciseId, patch) {
+      const exercise = state.exercises.find((item) => item.id === exerciseId);
+      if (!exercise) return;
+      const next: { name?: string; focus?: string | null } = {};
+      if (patch.name !== undefined) {
+        const name = patch.name.trim();
+        if (!name || name === exercise.name) {
+          if (patch.focus === undefined) return;
+        } else {
+          next.name = name;
+        }
+      }
+      if (patch.focus !== undefined && patch.focus !== exercise.focus) next.focus = patch.focus;
+      if (next.name === undefined && next.focus === undefined) return;
+      commit({ kind: "update-exercise", id: exerciseId, patch: next }, "now");
     },
     reorder(dayId, ids) {
       const day = state.days.find((item) => item.id === dayId);

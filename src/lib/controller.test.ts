@@ -177,4 +177,20 @@ describe("controller", () => {
     await controller.settled();
     expect(repo.peek().exercises.some((exercise) => exercise.name === "Face Pull")).toBe(true);
   });
+
+  it("renames an exercise on every workout and saves a note", async () => {
+    const { controller, repo } = harness();
+    await controller.load();
+    const press = controller.getState().exercises.find((exercise) => exercise.name === "DB Shoulder Press")!;
+    const entry = controller.getState().days.flatMap((day) => day.entries).find((item) => item.exerciseId === press.id)!;
+    controller.updateExercise(press.id, { name: "Dumbbell Shoulder Press", focus: "Shoulder" });
+    controller.setNote(entry.id, "Slow");
+    await controller.flush();
+    expect(repo.peek().exercises.find((exercise) => exercise.id === press.id)?.name).toBe(
+      "Dumbbell Shoulder Press",
+    );
+    const renamed = controller.getState().days.flatMap((day) => day.entries).filter((item) => item.exerciseId === press.id);
+    expect(renamed.every((item) => item.name === "Dumbbell Shoulder Press")).toBe(true);
+    expect(repo.peek().days.flatMap((day) => day.entries).find((item) => item.id === entry.id)?.notes).toBe("Slow");
+  });
 });

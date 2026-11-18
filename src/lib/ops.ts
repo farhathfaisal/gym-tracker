@@ -12,11 +12,12 @@ export type Op =
   | { kind: "update-day"; id: string; patch: { date?: string; focus?: string | null } }
   | { kind: "delete-day"; id: string }
   | { kind: "create-exercise"; exercise: Exercise }
+  | { kind: "update-exercise"; id: string; patch: { name?: string; focus?: string | null } }
   | { kind: "create-entry"; entry: Entry }
   | {
       kind: "update-entry";
       id: string;
-      patch: { weight?: number | null; sxr?: string | null; done?: boolean };
+      patch: { weight?: number | null; sxr?: string | null; done?: boolean; notes?: string | null };
     }
   | { kind: "delete-entry"; id: string }
   | { kind: "reorder"; dayId: string; ids: string[] };
@@ -61,6 +62,28 @@ export function applyOp(snapshot: Snapshot, op: Op): Snapshot {
         ...snapshot,
         days: snapshot.days.filter((day) => day.id !== op.id),
       };
+    case "update-exercise": {
+      const current = snapshot.exercises.find((exercise) => exercise.id === op.id);
+      if (!current) return snapshot;
+      const name = op.patch.name?.trim() || current.name;
+      const focus = op.patch.focus === undefined ? current.focus : op.patch.focus;
+      return {
+        ...snapshot,
+        exercises: snapshot.exercises
+          .map((exercise) =>
+            exercise.id === op.id
+              ? { ...exercise, name, focus, targets: focus ? [focus] : [] }
+              : exercise,
+          )
+          .sort((a, b) => a.name.localeCompare(b.name)),
+        days: snapshot.days.map((day) => ({
+          ...day,
+          entries: day.entries.map((entry) =>
+            entry.exerciseId === op.id ? { ...entry, name } : entry,
+          ),
+        })),
+      };
+    }
     case "create-entry":
       return {
         ...snapshot,
@@ -124,6 +147,22 @@ export function mergeQueue(queue: Op[], op: Op): Op[] {
       const next = queue.slice();
       next[index] = {
         kind: "update-entry",
+        id: op.id,
+        patch: { ...current.patch, ...op.patch },
+      };
+      return next;
+    }
+  }
+  if (op.kind === "update-exercise") {
+    const index = queue.findIndex(
+      (item) => item.kind === "update-exercise" && item.id === op.id,
+    );
+    if (index >= 0) {
+      const current = queue[index];
+      if (current.kind !== "update-exercise") return [...queue, op];
+      const next = queue.slice();
+      next[index] = {
+        kind: "update-exercise",
         id: op.id,
         patch: { ...current.patch, ...op.patch },
       };

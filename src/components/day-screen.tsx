@@ -4,6 +4,7 @@ import { Reorder } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type UIEvent } from "react";
 import { WeightChart } from "@/components/chart";
+import { ExercisePicker } from "@/components/exercise-picker";
 import { ExerciseRow } from "@/components/exercise-row";
 import { ChevronDown, ChevronLeft } from "@/components/icons";
 import { Sheet } from "@/components/sheet";
@@ -18,7 +19,6 @@ import {
   progressOf,
   sortEntries,
   weightSeries,
-  type Exercise,
 } from "@/lib/domain";
 import { haptic } from "@/lib/haptics";
 
@@ -30,8 +30,6 @@ export function DayScreen({ id }: { id: string }) {
   const [settings, setSettings] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [adding, setAdding] = useState(false);
-  const [query, setQuery] = useState("");
-  const [muscle, setMuscle] = useState<string>("All");
   const [sxrEntry, setSxrEntry] = useState<string | null>(null);
   const [customSxr, setCustomSxr] = useState("");
   const [historyId, setHistoryId] = useState<string | null>(null);
@@ -86,52 +84,9 @@ export function DayScreen({ id }: { id: string }) {
     setOverride(null);
   }
 
-  function openAdd() {
-    const focus = day?.focus;
-    setMuscle(focus && (FOCUSES as readonly string[]).includes(focus) ? focus : "All");
-    setQuery("");
-    setAdding(true);
-  }
-
   function closeAdd() {
     setAdding(false);
-    setQuery("");
   }
-
-  function chooseExercise(exercise: Exercise) {
-    gym.api.addEntry(day!.id, exercise);
-    haptic("select");
-    closeAdd();
-  }
-
-  const needle = query.trim().toLowerCase();
-  const muscleOrder = [
-    ...(day.focus && (FOCUSES as readonly string[]).includes(day.focus) ? [day.focus] : []),
-    ...FOCUSES.filter((name) => name !== day.focus),
-  ];
-  const matches = [...gym.exercises]
-    .filter((exercise) => {
-      if (needle && !exercise.name.toLowerCase().includes(needle)) return false;
-      if (muscle !== "All" && exercise.focus !== muscle) return false;
-      return true;
-    })
-    .sort((a, b) => a.name.localeCompare(b.name));
-  const sections =
-    muscle === "All"
-      ? [
-          ...muscleOrder.map((name) => ({
-            name,
-            exercises: matches.filter((exercise) => exercise.focus === name),
-          })),
-          {
-            name: "Other",
-            exercises: matches.filter(
-              (exercise) => !exercise.focus || !(FOCUSES as readonly string[]).includes(exercise.focus),
-            ),
-          },
-        ].filter((section) => section.exercises.length > 0)
-      : [{ name: muscle, exercises: matches }];
-  const exact = gym.exercises.some((exercise) => exercise.name.toLowerCase() === needle);
 
   return (
     <div className="screen">
@@ -141,7 +96,7 @@ export function DayScreen({ id }: { id: string }) {
           <strong>Workouts</strong>
         </button>
         <div className="nav-title">{focusName}</div>
-        <button type="button" className="nav-btn" onClick={() => setSettings(true)}>
+        <button type="button" className="nav-btn" onClick={() => router.push(`/day/${day.id}/edit`)}>
           Edit
         </button>
       </header>
@@ -198,7 +153,7 @@ export function DayScreen({ id }: { id: string }) {
           type="button"
           className="add-btn"
           data-testid="add-exercise"
-          onClick={openAdd}
+          onClick={() => setAdding(true)}
         >
           Add exercise
         </button>
@@ -260,63 +215,20 @@ export function DayScreen({ id }: { id: string }) {
       </Sheet>
 
       <Sheet open={adding} title="Add exercise" onClose={closeAdd}>
-        <div className="picker-tools">
-          <input
-            className="search"
-            placeholder="Search or create"
-            value={query}
-            autoFocus
-            data-testid="exercise-search"
-            onChange={(event) => setQuery(event.target.value)}
-          />
-          <div className="chips muscle-chips" role="tablist" aria-label="Muscle group">
-            {["All", ...muscleOrder].map((name) => (
-              <button
-                key={name}
-                type="button"
-                className="chip"
-                aria-pressed={muscle === name}
-                onClick={() => setMuscle(name)}
-              >
-                {name === "All" ? null : <span className="dot" data-focus={name} />}
-                {name}
-              </button>
-            ))}
-          </div>
-        </div>
-        {sections.map((section) => (
-          <div key={section.name}>
-            {muscle === "All" ? <p className="inset-label">{section.name}</p> : null}
-            <div>
-              {section.exercises.map((exercise) => (
-                <ExerciseChoice
-                  key={exercise.id}
-                  exercise={exercise}
-                  showFocus={muscle === "All"}
-                  onChoose={chooseExercise}
-                />
-              ))}
-            </div>
-          </div>
-        ))}
-        {matches.length === 0 && !needle ? (
-          <p className="empty-copy">
-            {muscle === "All" ? "No exercises yet." : `No ${muscle.toLowerCase()} exercises yet.`}
-          </p>
-        ) : null}
-        {needle && !exact ? (
-          <button
-            type="button"
-            className="option create"
-            onClick={() => {
-              gym.api.createExerciseAndAdd(day.id, query, muscle === "All" ? day.focus : muscle);
-              haptic("select");
-              closeAdd();
-            }}
-          >
-            Create “{query.trim()}”
-          </button>
-        ) : null}
+        <ExercisePicker
+          exercises={gym.exercises}
+          dayFocus={day.focus}
+          onChoose={(exercise) => {
+            gym.api.addEntry(day.id, exercise);
+            haptic("select");
+            closeAdd();
+          }}
+          onCreate={(name, focus) => {
+            gym.api.createExerciseAndAdd(day.id, name, focus);
+            haptic("select");
+            closeAdd();
+          }}
+        />
       </Sheet>
 
       <Sheet
@@ -393,19 +305,3 @@ export function DayScreen({ id }: { id: string }) {
   );
 }
 
-function ExerciseChoice({
-  exercise,
-  showFocus,
-  onChoose,
-}: {
-  exercise: Exercise;
-  showFocus: boolean;
-  onChoose: (exercise: Exercise) => void;
-}) {
-  return (
-    <button type="button" className="option" onClick={() => onChoose(exercise)}>
-      <span>{exercise.name}</span>
-      {showFocus && exercise.focus ? <span className="meta">{exercise.focus}</span> : null}
-    </button>
-  );
-}
