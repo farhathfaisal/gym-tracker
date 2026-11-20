@@ -640,6 +640,25 @@ button {
   text-align: left;
 }
 
+.name-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.name-line .name-btn {
+  min-width: 0;
+}
+
+.replace-link {
+  color: var(--accent);
+  font-size: 15px;
+  font-weight: 500;
+  min-height: 28px;
+  flex: none;
+}
+
 .hint {
   color: var(--tertiary);
   font-size: 13px;

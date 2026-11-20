@@ -30,6 +30,7 @@ export function DayScreen({ id }: { id: string }) {
   const [settings, setSettings] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [replacingId, setReplacingId] = useState<string | null>(null);
   const [sxrEntry, setSxrEntry] = useState<string | null>(null);
   const [customSxr, setCustomSxr] = useState("");
   const [historyId, setHistoryId] = useState<string | null>(null);
@@ -146,6 +147,7 @@ export function DayScreen({ id }: { id: string }) {
                   setCustomSxr(entry.sxr ?? "");
                 }}
                 onHistory={() => setHistoryId(entry.id)}
+                onReplace={() => setReplacingId(entry.id)}
                 onDragStart={() => undefined}
                 onDragEnd={finishDrag}
               />
@@ -220,6 +222,30 @@ export function DayScreen({ id }: { id: string }) {
             Delete workout
           </button>
         )}
+      </Sheet>
+
+      <Sheet
+        open={replacingId != null}
+        title="Replace exercise"
+        onClose={() => setReplacingId(null)}
+      >
+        <ExercisePicker
+          exercises={gym.exercises}
+          dayFocus={day.focus}
+          onChoose={(exercise) => {
+            if (!replacingId) return;
+            gym.api.replaceEntry(replacingId, exercise);
+            haptic("select");
+            setReplacingId(null);
+          }}
+          onCreate={(name, focus) => {
+            if (!replacingId) return;
+            const created = gym.api.createExercise(name, focus);
+            if (created) gym.api.replaceEntry(replacingId, created);
+            haptic("select");
+            setReplacingId(null);
+          }}
+        />
       </Sheet>
 
       <Sheet open={adding} title="Add exercise" onClose={closeAdd}>

@@ -178,6 +178,21 @@ describe("controller", () => {
     expect(repo.peek().exercises.some((exercise) => exercise.name === "Face Pull")).toBe(true);
   });
 
+  it("replaces an exercise in place and keeps its spot", async () => {
+    const { controller, repo } = harness();
+    await controller.load();
+    const day = controller.getState().days.find((item) => item.id === "day-today")!;
+    const entry = [...day.entries].sort((a, b) => a.position - b.position)[0]!;
+    const replacement = controller.getState().exercises.find((exercise) => exercise.name === "Pec Fly")!;
+    controller.replaceEntry(entry.id, replacement);
+    await controller.settled();
+    const stored = repo.peek().days.find((item) => item.id === day.id)!.entries.find((item) => item.id === entry.id)!;
+    expect(stored.exerciseId).toBe(replacement.id);
+    expect(stored.name).toBe("Pec Fly");
+    expect(stored.position).toBe(entry.position);
+    expect(stored.done).toBe(entry.done);
+  });
+
   it("starts an empty workout for a chosen day", async () => {
     const { controller, repo, today } = harness();
     await controller.load();

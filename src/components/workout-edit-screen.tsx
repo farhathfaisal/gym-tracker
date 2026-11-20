@@ -28,6 +28,7 @@ export function WorkoutEditScreen({ id }: { id: string }) {
   const day = gym.days.find((item) => item.id === id);
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [replacing, setReplacing] = useState(false);
   const storedIds = day ? sortEntries(day.entries).map((entry) => entry.id) : [];
   const storedKey = storedIds.join("|");
   const [override, setOverride] = useState<string[] | null>(null);
@@ -150,13 +151,18 @@ export function WorkoutEditScreen({ id }: { id: string }) {
         />
       </Sheet>
 
-      <Sheet open={editing != null} title={editing?.name ?? "Exercise"} onClose={() => setEditingId(null)}>
+      <Sheet
+        open={editing != null && !replacing}
+        title={editing?.name ?? "Exercise"}
+        onClose={() => setEditingId(null)}
+      >
         {editing ? (
           <EntryEditor
-            key={editing.id}
+            key={`${editing.id}:${editing.exerciseId ?? ""}`}
             entry={editing}
             exercise={editingExercise}
             api={gym.api}
+            onReplace={() => setReplacing(true)}
             onRemove={() => {
               gym.api.deleteEntry(editing.id);
               haptic("warn");
@@ -164,6 +170,26 @@ export function WorkoutEditScreen({ id }: { id: string }) {
             }}
           />
         ) : null}
+      </Sheet>
+
+      <Sheet open={replacing} title="Replace exercise" onClose={() => setReplacing(false)}>
+        <ExercisePicker
+          exercises={gym.exercises}
+          dayFocus={day.focus}
+          onChoose={(exercise) => {
+            if (!editing) return;
+            gym.api.replaceEntry(editing.id, exercise);
+            haptic("select");
+            setReplacing(false);
+          }}
+          onCreate={(name, focus) => {
+            if (!editing) return;
+            const created = gym.api.createExercise(name, focus);
+            if (created) gym.api.replaceEntry(editing.id, created);
+            haptic("select");
+            setReplacing(false);
+          }}
+        />
       </Sheet>
     </div>
   );
@@ -230,11 +256,13 @@ function EntryEditor({
   entry,
   exercise,
   api,
+  onReplace,
   onRemove,
 }: {
   entry: Entry;
   exercise: Exercise | null;
   api: GymController;
+  onReplace: () => void;
   onRemove: () => void;
 }) {
   const [name, setName] = useState(entry.name);
@@ -259,6 +287,9 @@ function EntryEditor({
 
   return (
     <>
+      <button type="button" className="account" onClick={onReplace}>
+        Replace exercise
+      </button>
       {exercise ? (
         <div className="field">
           <label htmlFor="exercise-name">Name</label>

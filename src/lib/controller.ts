@@ -53,6 +53,7 @@ export type GymController = {
   updateExercise: (exerciseId: string, patch: { name?: string; focus?: string | null }) => void;
   reorder: (dayId: string, ids: string[]) => void;
   deleteEntry: (entryId: string) => void;
+  replaceEntry: (entryId: string, exercise: Exercise) => void;
   addEntry: (dayId: string, exercise: Exercise) => Entry | null;
   createExercise: (name: string, focus: string | null) => Exercise | null;
   createExerciseAndAdd: (dayId: string, name: string, focus: string | null) => Entry | null;
@@ -425,6 +426,27 @@ export function createController(options: ControllerOptions): GymController {
     deleteEntry(entryId) {
       if (!findEntry(state.days, entryId)) return;
       commit({ kind: "delete-entry", id: entryId }, "now");
+    },
+    replaceEntry(entryId, exercise) {
+      const found = findEntry(state.days, entryId);
+      if (!found || found.entry.exerciseId === exercise.id) return;
+      const weight =
+        previousWeight(state.days, exercise.id, found.day, found.entry.position)?.weight ?? null;
+      const sxr = defaultSxr(
+        exercise,
+        previousSxr(state.days, exercise.id, found.day, found.entry.position),
+      );
+      commit(
+        {
+          kind: "replace-entry",
+          id: entryId,
+          exerciseId: exercise.id,
+          name: exercise.name,
+          weight,
+          sxr,
+        },
+        "now",
+      );
     },
     addEntry(dayId, exercise) {
       const day = state.days.find((item) => item.id === dayId);

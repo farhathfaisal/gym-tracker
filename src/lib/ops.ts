@@ -20,6 +20,14 @@ export type Op =
       patch: { weight?: number | null; sxr?: string | null; done?: boolean; notes?: string | null };
     }
   | { kind: "delete-entry"; id: string }
+  | {
+      kind: "replace-entry";
+      id: string;
+      exerciseId: string;
+      name: string;
+      weight: number | null;
+      sxr: string | null;
+    }
   | { kind: "reorder"; dayId: string; ids: string[] };
 
 function mapDay(days: Day[], id: string, update: (day: Day) => Day): Day[] {
@@ -107,6 +115,25 @@ export function applyOp(snapshot: Snapshot, op: Op): Snapshot {
           ),
         })),
       };
+    case "replace-entry":
+      return {
+        ...snapshot,
+        days: snapshot.days.map((day) => ({
+          ...day,
+          entries: day.entries.map((entry) =>
+            entry.id === op.id
+              ? {
+                  ...entry,
+                  exerciseId: op.exerciseId,
+                  name: op.name,
+                  weight: op.weight,
+                  sxr: op.sxr,
+                  updatedAt: new Date().toISOString(),
+                }
+              : entry,
+          ),
+        })),
+      };
     case "delete-entry":
       return {
         ...snapshot,
@@ -168,6 +195,16 @@ export function mergeQueue(queue: Op[], op: Op): Op[] {
       };
       return next;
     }
+  }
+  if (op.kind === "replace-entry") {
+    const withoutStale = queue.filter(
+      (item) =>
+        !(
+          (item.kind === "replace-entry" && item.id === op.id) ||
+          (item.kind === "update-entry" && item.id === op.id)
+        ),
+    );
+    return [...withoutStale, op];
   }
   if (op.kind === "reorder") {
     const index = queue.findIndex(

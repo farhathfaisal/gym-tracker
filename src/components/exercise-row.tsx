@@ -23,6 +23,7 @@ export function ExerciseRow({
   api,
   onSxr,
   onHistory,
+  onReplace,
   onDragStart,
   onDragEnd,
 }: {
@@ -32,6 +33,7 @@ export function ExerciseRow({
   api: GymController;
   onSxr: () => void;
   onHistory: () => void;
+  onReplace: () => void;
   onDragStart: () => void;
   onDragEnd: () => void;
 }) {
@@ -162,9 +164,14 @@ export function ExerciseRow({
           </span>
         </button>
         <div className="entry-body">
-          <button type="button" className="name-btn" onClick={onHistory}>
-            {entry.name}
-          </button>
+          <div className="name-line">
+            <button type="button" className="name-btn" onClick={onHistory}>
+              {entry.name}
+            </button>
+            <button type="button" className="replace-link" onClick={onReplace}>
+              Replace
+            </button>
+          </div>
           <div className="sxr-row">
             <button type="button" className="sxr-btn" data-testid="sxr" onClick={onSxr}>
               {displaySxr(entry.sxr)}

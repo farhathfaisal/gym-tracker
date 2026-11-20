@@ -124,6 +124,19 @@ export function createSupabaseRepository(client: SupabaseClient): GymRepository 
           assertOk(result.error, result.data as { id: string }[] | null);
           return;
         }
+        case "replace-entry": {
+          const result = await client
+            .from("gym_entries")
+            .update({
+              exercise_id: op.exerciseId,
+              weight: op.weight,
+              sxr: op.sxr,
+            })
+            .eq("id", op.id)
+            .select("id");
+          assertOk(result.error, result.data as { id: string }[] | null);
+          return;
+        }
         case "delete-entry": {
           const result = await client.from("gym_entries").delete().eq("id", op.id);
           if (result.error) throw new Error(result.error.message);
